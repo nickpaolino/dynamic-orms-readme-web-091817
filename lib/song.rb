@@ -1,10 +1,10 @@
 require_relative "../config/environment.rb"
 require 'active_support/inflector'
+require 'pry'
 
 class Song
 
-
-  def self.table_name
+  def self.table_name # Creates the table name for SQL
     self.to_s.downcase.pluralize
   end
 
@@ -21,18 +21,27 @@ class Song
     column_names.compact
   end
 
-  self.column_names.each do |col_name|
+  self.column_names.each do |col_name| # Setting up an attribute accessor for each column name
     attr_accessor col_name.to_sym
   end
 
+  # accessors are nil here
+
   def initialize(options={})
     options.each do |property, value|
-      self.send("#{property}=", value)
+      self.send("#{property}=", value) # Assigns each value to a method that was
+      # defined by the accessor and by assigning it to the writer method, it
+      # creates an instance variable
     end
   end
 
+  # accessors have values
+
   def save
-    sql = "INSERT INTO #{table_name_for_insert} (#{col_names_for_insert}) VALUES (#{values_for_insert})"
+    sql = <<-SQL
+      INSERT INTO #{table_name_for_insert} (#{col_names_for_insert})
+      VALUES (#{values_for_insert})
+    SQL
     DB[:conn].execute(sql)
     @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{table_name_for_insert}")[0][0]
   end
@@ -44,13 +53,16 @@ class Song
   def values_for_insert
     values = []
     self.class.column_names.each do |col_name|
-      values << "'#{send(col_name)}'" unless send(col_name).nil?
+      values << "'#{send(col_name)}'" unless send(col_name).nil? # unless there's no value in the accessor
+      # from the column name
     end
     values.join(", ")
+    # ""Nick", 23"
   end
 
   def col_names_for_insert
     self.class.column_names.delete_if {|col| col == "id"}.join(", ")
+    # This turns ["id", "name", "album"] into "name, album"
   end
 
   def self.find_by_name(name)
@@ -60,5 +72,5 @@ class Song
 
 end
 
-
-
+song = Song.new
+song.values_for_insert
